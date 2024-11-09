@@ -34,6 +34,11 @@ class IWindow {
   /// </summary>
   /// <param name="value">The new two-dimensional extent of the window measured in pixels</param>
   virtual void SetExtent(Extent2D value) = 0;
+  
+  /// <summary>
+  /// Processes events and invokes appropriate signals
+  /// </summary>
+  virtual void ProcessInput() = 0;
 
   virtual ~IWindow() = default;
 };

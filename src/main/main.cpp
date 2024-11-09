@@ -12,8 +12,11 @@ namespace zge {
   /// <param name="argv">Pointer to an array of c-style strings</param>
   /// <returns>Exit code</returns>
   int Main(int argc, char** argv) {
-    std::unique_ptr<IWindow> window = std::make_unique<WinWindow>(1600, 900);
+    std::unique_ptr<IWindow> window = std::make_unique<WinWindow>(Extent2D{.width = 1600, .height = 900});
     window->Show();
+    while (true) {
+      window->ProcessInput();
+    }
     return EXIT_SUCCESS;
   }
 

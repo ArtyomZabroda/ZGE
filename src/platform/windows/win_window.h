@@ -11,7 +11,7 @@ namespace zge {
 /// </summary>
 class WinWindow : public IWindow {
  public:
-  WinWindow(int width, int height); 
+  WinWindow(const Extent2D& extent); 
  private:
   HWND hwnd_;
 
@@ -20,6 +20,7 @@ class WinWindow : public IWindow {
   void Hide() const override;
   Extent2D Extent() const override;
   void SetExtent(Extent2D value) override;
+  void ProcessInput() override;
 };
 
 }

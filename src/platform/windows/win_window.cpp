@@ -1,6 +1,6 @@
 #include "win_window.h"
 
-zge::WinWindow::WinWindow(int width, int height)
+zge::WinWindow::WinWindow(const Extent2D& extent)
 {
   const wchar_t kWndClassName[] = L"zge";
 
@@ -25,6 +25,7 @@ zge::WinWindow::WinWindow(int width, int height)
     wc.hInstance,  // Instance handle
     this        // Additional application data. We are passing a pointer to "this", which we will use in a WindowProc
   );
+  SetExtent(extent);
 }
 
 void zge::WinWindow::Show() const
@@ -46,5 +47,22 @@ zge::Extent2D zge::WinWindow::Extent() const
 
 void zge::WinWindow::SetExtent(Extent2D value)
 {
+  RECT rect;
+  rect.top = 0;
+  rect.left = 0;
+  rect.bottom = value.height;
+  rect.right = value.width;
+  DWORD dw_style = GetWindowLongPtr(hwnd_, GWL_STYLE);
+  DWORD dw_ex_style = GetWindowLongPtr(hwnd_, GWL_EXSTYLE);
+  AdjustWindowRectEx(&rect, dw_style, NULL, dw_ex_style);
+  SetWindowPos(hwnd_, NULL, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER);
+}
 
+void zge::WinWindow::ProcessInput()
+{
+  MSG msg;
+  while (PeekMessage(&msg, hwnd_, 0, 0, PM_REMOVE)) { // GetMessage blocks which we don't want, so we use PeekMessage
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
 }
