@@ -10,6 +10,3 @@ if (POLICY CMP0141)
 endif()
 
 project ("ZGameEngine")
-
-# Включите подпроекты.
-add_subdirectory ("ZGameEngine")
