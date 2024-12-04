@@ -1,5 +1,0 @@
-add_library(PlatformWindows "win_main.cpp" "win_window.h" "win_window.cpp")
-target_include_directories(PlatformWindows PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_options(PlatformWindows PUBLIC "/entry:wWinMainCRTStartup")
-target_compile_definitions(PlatformWindows PRIVATE _UNICODE UNICODE)
-target_link_libraries(PlatformWindows PUBLIC PlatformInterface Core)

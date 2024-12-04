@@ -1,23 +1,23 @@
-#include <cerrno>
-#include <memory>
-
-#include <win_window.h>
+#include <iostream>
+#include <window.h>
+#include <renderer.h>
+#include <signal.h>
+#include <log.h>
 
 namespace zge {
 
-  /// <summary>
-  /// Engine's main function. It should be called from platform-specific main function (wWinMain on Windows, for example)
-  /// </summary>
-  /// <param name="argc">Number of parameters</param>
-  /// <param name="argv">Pointer to an array of c-style strings</param>
-  /// <returns>Exit code</returns>
-  int Main(int argc, char** argv) {
-    std::unique_ptr<IWindow> window = std::make_unique<WinWindow>(Extent2D{.width = 1600, .height = 900});
-    window->Show();
-    while (true) {
-      window->ProcessInput();
-    }
-    return EXIT_SUCCESS;
+int ZMain(int argc, char** argv) {
+  InitLogging(argv[0]);
+  Window window("ZGAMEENGINE", Extent2D{.width = 1600, .height = 900});
+  Renderer renderer(&window);
+  window.Show();
+  bool window_closed = false;
+  window.Closed().Connect([&window_closed]() { window_closed = true; });
+  while (!window_closed) {
+    window.ProcessInput();
+    renderer.DrawFrame();
   }
+  return 0;
+}
 
 }

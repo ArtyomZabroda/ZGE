@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    "sdl3",
+    "boost-signals2",
+    "glog",
+    "directxtk",
+    "glm"
+  ]
+}

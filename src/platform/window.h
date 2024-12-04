@@ -1,46 +1,39 @@
-#ifndef PLATFORM_WINDOW_H_
-#define PLATFORM_WINDOW_H_
+#ifndef PLATFORM_SDL3_SDL_WINDOW_H_
+#define PLATFORM_SDL3_SDL_WINDOW_H_
 
-#include <util/extent.h>
+#include <string>
+#include <extent.h>
+#include <signal.h>
+#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_events.h>
+
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 namespace zge {
 
-
-/// <summary>
-/// Exposes a window interface, which is implemented by every supported platform
-/// </summary>
-class IWindow {
+class Window {
  public:
-  /// <summary>
-  /// Shows the window
-  /// </summary>
-  virtual void Show() const = 0;
+  Window(const std::string& title, Extent2D client_extent);
+  void Show();
+  ~Window();
+  std::string Title();
+  void SetTitle(const std::string& new_title);
+  Extent2D Extent();
+  void SetExtent(Extent2D new_extent);
+#ifdef WIN32
+  HWND GetNativeHandle();
+#endif
+  void ProcessInput();
 
-  /// <summary>
-  /// Hides the window
-  /// </summary>
-  virtual void Hide() const = 0;
-
-  /// <summary>
-  /// Gets the extent (size) of the window
-  /// </summary>
-  /// <returns>
-  /// Two-dimensional extent of the window measured in pixels
-  /// </returns>
-  virtual Extent2D Extent() const = 0;
-
-  /// <summary>
-  /// Sets the extent of the window
-  /// </summary>
-  /// <param name="value">The new two-dimensional extent of the window measured in pixels</param>
-  virtual void SetExtent(Extent2D value) = 0;
-  
-  /// <summary>
-  /// Processes events and invokes appropriate signals
-  /// </summary>
-  virtual void ProcessInput() = 0;
-
-  virtual ~IWindow() = default;
+  Signal<void()>& Closed() { return closed_; }
+  Signal<void(Extent2D)>& Resized() { return resized_; }
+ private:
+  SDL_Window* wnd_;
+  Signal<void()> closed_;
+  Signal<void(Extent2D)> resized_;
 };
 
 }

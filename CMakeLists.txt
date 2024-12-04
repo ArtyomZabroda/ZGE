@@ -1,7 +1,7 @@
-﻿# CMakeList.txt: файл проекта CMake верхнего уровня; проведите глобальную конфигурацию
-# и включите сюда подпроекты.
+﻿# CMakeList.txt: проект CMake для ZGameEngine; включите исходный код и определения,
+# укажите здесь логику для конкретного проекта.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.20)
 
 # Включение горячей перезагрузки для компиляторов MSVC, если поддерживается.
 if (POLICY CMP0141)
@@ -11,10 +11,8 @@ endif()
 
 project ("ZGameEngine")
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(COMPILE_WARNING_AS_ERROR ON)
 
 add_subdirectory("src")
-add_subdirectory("tests")
-add_subdirectory("sandbox")
+add_subdirectory("examples")
