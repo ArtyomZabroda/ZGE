@@ -58,4 +58,17 @@ void zge::Window::ProcessInput() {
         break;
     }
   }
+  const bool* keys_state = SDL_GetKeyboardState(NULL);
+  if (keys_state[SDL_SCANCODE_W]) {
+    key_down_.Emit(zge::Key::kW);
+  }
+  if (keys_state[SDL_SCANCODE_A]) {
+    key_down_.Emit(zge::Key::kA);
+  }
+  if (keys_state[SDL_SCANCODE_S]) {
+    key_down_.Emit(zge::Key::kS);
+  }
+  if (keys_state[SDL_SCANCODE_D]) {
+    key_down_.Emit(zge::Key::kD);
+  }
 }

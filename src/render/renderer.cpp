@@ -5,8 +5,17 @@
 #include <winerror.h>
 #include <fstream>
 #include <utils.h>
+#include <transform.h>
+#include <mesh_instance.h>
+#include <parent.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_decompose.hpp>
 
-zge::Renderer::Renderer(Window* window) : window_{window}, camera_{glm::vec3(0, 0, 5), glm::vec3(0,0,50)} {
+zge::Renderer::Renderer(Window* window, entt::registry* registry, entt::entity camera_entity)
+    : window_{window},
+      registry_{registry},
+      camera_{glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)},
+      camera_entity_{camera_entity} {
   LOG(INFO) << "Creating a renderer";
   DCHECK(window != nullptr);
 
@@ -92,6 +101,44 @@ zge::Renderer::Renderer(Window* window) : window_{window}, camera_{glm::vec3(0, 
   CHECK(SUCCEEDED(device_->CreateBuffer(&cbd, nullptr, &per_object_cbuffer)))
       << "Failed to create a per object constant buffer";
 
+  
+
+  zge::Parent* parent;
+  entt::entity proccessed_entity = camera_entity;
+  zge::Camera* camera = registry_->try_get<Camera>(camera_entity);
+  glm::mat4 model = glm::mat4(1);
+  model = glm::translate(model, camera->position);
+  model = glm::rotate(model, camera->rotation.y, glm::vec3(0, 1, 0));
+  model = glm::rotate(model, camera->rotation.x, glm::vec3(1, 0, 0));
+  model = glm::rotate(model, camera->rotation.z, glm::vec3(0, 0, 1));
+  while (parent = registry_->try_get<zge::Parent>(proccessed_entity)) {
+    if (Transform* t = registry_->try_get<zge::Transform>(parent->entity)) {
+      glm::mat4 parent_model;
+      parent_model = glm::mat4(1);
+      parent_model = glm::translate(parent_model, t->position);
+      parent_model =
+          glm::rotate(parent_model, glm::radians(t->rotation.y), glm::vec3(0, 1, 0));
+      parent_model =
+          glm::rotate(parent_model, glm::radians(t->rotation.x), glm::vec3(1, 0, 0));
+      parent_model =
+          glm::rotate(parent_model, glm::radians(t->rotation.z), glm::vec3(0, 0, 1));
+
+      model = parent_model * model;
+    }
+    proccessed_entity = parent->entity;
+  }
+
+  glm::vec3 scale;
+  glm::quat rotation;
+  glm::vec3 translation;
+  glm::vec3 skew;
+  glm::vec4 perspective;
+  glm::decompose(model, scale, rotation, translation, skew,
+                 perspective);
+
+  camera_.SetPosition(translation);
+  glm::vec3 rot_euler = glm::degrees(glm::eulerAngles(rotation));
+  camera_.SetRotation(rot_euler);
 
   LOG(INFO) << "Renderer has been created successfully";
 }
@@ -112,23 +159,34 @@ void zge::Renderer::DrawFrame() {
   immediate_context_->IASetVertexBuffers(0, 1, vertex_buffer_.GetAddressOf(),
                                          &stride, &offset);
 
-  PerObject pb;
-  pb.model = glm::mat4(1);
-  pb.view = camera_.View();
-  pb.proj = camera_.Proj();
-
-  D3D11_MAPPED_SUBRESOURCE mapped_resource;
-  immediate_context_->Map(per_object_cbuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD,
-                          0, &mapped_resource);
-  memcpy(mapped_resource.pData, &pb, sizeof(pb));
-  immediate_context_->Unmap(per_object_cbuffer.Get(), 0);
-
-  immediate_context_->VSSetConstantBuffers(0, 1, per_object_cbuffer.GetAddressOf());
-
   immediate_context_->VSSetShader(vertex_shader_.Get(), nullptr, 0);
   immediate_context_->PSSetShader(pixel_shader_.Get(), nullptr, 0);
 
-  immediate_context_->Draw(3, 0);
+  for (auto&& [entity, transform, mesh_instance] :
+       registry_->view<zge::Transform, zge::MeshInstance>().each()) {
+    zge::Parent* parent;
+    glm::mat4 model;
+    model = glm::mat4(1);
+    model = glm::translate(model, transform.position);
+    model = glm::rotate(model, transform.rotation.y, glm::vec3(0, 1, 0));
+    model = glm::rotate(model, transform.rotation.x, glm::vec3(1, 0, 0));
+    model = glm::rotate(model, transform.rotation.z, glm::vec3(0, 0, 1));
+    model = glm::scale(model, transform.scale);
+
+    PerObject pb;
+    pb.model = model;
+    pb.view = camera_.View();
+    pb.proj = camera_.Proj();
+
+    D3D11_MAPPED_SUBRESOURCE mapped_resource;
+    immediate_context_->Map(per_object_cbuffer.Get(), 0,
+                            D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+    memcpy(mapped_resource.pData, &pb, sizeof(pb));
+    immediate_context_->Unmap(per_object_cbuffer.Get(), 0);
+    immediate_context_->VSSetConstantBuffers(0, 1,
+                                             per_object_cbuffer.GetAddressOf());
+    immediate_context_->Draw(3, 0);
+  }
 
   if (FAILED(swap_chain_->Present(0, 0))) {
     LOG(ERROR) << "Could not present a frame";

@@ -8,6 +8,7 @@
 #include <render_mesh.h>
 #include <vector>
 #include <render_camera.h>
+#include <entt/entity/registry.hpp>
 
 namespace zge {
 
@@ -19,13 +20,14 @@ struct PerObject {
 
 class Renderer {
  public:
-  Renderer(Window* window);
+  Renderer(Window* window, entt::registry* registry, entt::entity camera_entity);
   void DrawFrame();
   void DrawMesh(const RenderMesh& mesh, 
                 ID3D11VertexShader* vs,
                 ID3D11PixelShader* ps);
  private:
   Window* window_;
+  entt::registry* registry_;
   Microsoft::WRL::ComPtr<ID3D11Device> device_;
   Microsoft::WRL::ComPtr<IDXGISwapChain> swap_chain_;
   Microsoft::WRL::ComPtr<ID3D11DeviceContext> immediate_context_;
@@ -48,6 +50,7 @@ class Renderer {
       {glm::vec3(0.5f, -0.5f, 0.0f)}
   };
 
+  entt::entity camera_entity_;
   RenderCamera camera_;
 };
 

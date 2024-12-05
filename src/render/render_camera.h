@@ -3,17 +3,23 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <camera.h>
 
 namespace zge {
 
 class RenderCamera {
  public:
-  RenderCamera(const glm::vec3& position, const glm::vec3& rotation);
+  RenderCamera(glm::vec3 position, glm::vec3 rotation);
   glm::mat4 View();
   glm::mat4 Proj();
+
+  void SetPosition(glm::vec3 position);
+  void SetRotation(glm::vec3 rotation);
  private:
   glm::vec3 position_;
   glm::vec3 rotation_;
+
+
 
   glm::vec3 front_{0, 0, -1};
   glm::vec3 up_{0, 1, 0};

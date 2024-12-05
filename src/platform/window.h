@@ -4,6 +4,7 @@
 #include <string>
 #include <extent.h>
 #include <signal.h>
+#include <key.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_events.h>
 
@@ -30,10 +31,12 @@ class Window {
 
   Signal<void()>& Closed() { return closed_; }
   Signal<void(Extent2D)>& Resized() { return resized_; }
+  Signal<void(Key)> KeyDown() { return key_down_; }
  private:
   SDL_Window* wnd_;
   Signal<void()> closed_;
   Signal<void(Extent2D)> resized_;
+  Signal<void(Key)> key_down_;
 };
 
 }

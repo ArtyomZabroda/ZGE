@@ -6,7 +6,6 @@
 namespace zge {
 
 struct CharacterController {
-  entt::entity camera;
   float sensitivity;
 };
 
