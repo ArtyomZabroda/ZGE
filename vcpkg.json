@@ -4,6 +4,7 @@
     "boost-signals2",
     "glog",
     "directxtk",
-    "glm"
+    "glm",
+    "entt"
   ]
 }

@@ -1,14 +1,14 @@
-#ifndef RENDER_CAMERA_H_
-#define RENDER_CAMERA_H_
+#ifndef RENDER_RENDER_CAMERA_H_
+#define RENDER_RENDER_CAMERA_H_
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace zge {
 
-class Camera {
+class RenderCamera {
  public:
-  Camera(const glm::vec3& position, const glm::vec3& rotation);
+  RenderCamera(const glm::vec3& position, const glm::vec3& rotation);
   glm::mat4 View();
   glm::mat4 Proj();
  private:

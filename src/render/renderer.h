@@ -7,7 +7,7 @@
 #include <wrl/client.h>
 #include <render_mesh.h>
 #include <vector>
-#include <camera.h>
+#include <render_camera.h>
 
 namespace zge {
 
@@ -48,7 +48,7 @@ class Renderer {
       {glm::vec3(0.5f, -0.5f, 0.0f)}
   };
 
-  Camera camera_;
+  RenderCamera camera_;
 };
 
 
