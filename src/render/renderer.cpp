@@ -4,8 +4,9 @@
 #include <log.h>
 #include <winerror.h>
 #include <fstream>
+#include <utils.h>
 
-zge::Renderer::Renderer(Window* window) : window_{window} {
+zge::Renderer::Renderer(Window* window) : window_{window}, camera_{glm::vec3(0, 0, 5), glm::vec3(0,0,50)} {
   LOG(INFO) << "Creating a renderer";
   DCHECK(window != nullptr);
 
@@ -45,6 +46,53 @@ zge::Renderer::Renderer(Window* window) : window_{window} {
   window->Resized().Connect(
       [this](Extent2D new_extent) { OnResized(new_extent); });
 
+  std::vector<std::byte> vert_shader_bytes, pixel_shader_bytes;
+  CHECK(GetBytesFromFile("vert.vso", vert_shader_bytes))
+      << "Failed to read the vertex shader file";
+  CHECK(GetBytesFromFile("pixel.pso", pixel_shader_bytes))
+      << "Failed to read the pixel shader file";
+
+  CHECK(SUCCEEDED(device_->CreateVertexShader(vert_shader_bytes.data(),
+                              vert_shader_bytes.size(), nullptr,
+                                              &vertex_shader_)))
+      << "Failed to create a vertex shader";
+
+  CHECK(SUCCEEDED(device_->CreatePixelShader(pixel_shader_bytes.data(),
+                             pixel_shader_bytes.size(), nullptr,
+                                             &pixel_shader_)))
+      << "Failed to create a pixel shader";
+
+  D3D11_INPUT_ELEMENT_DESC vertex_desc[] = {{"POSITION", 0,
+                                             DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+                                             D3D11_INPUT_PER_VERTEX_DATA, 0}};
+
+  device_->CreateInputLayout(vertex_desc, 1, vert_shader_bytes.data(),
+                             vert_shader_bytes.size(), &input_layout_);
+
+  D3D11_BUFFER_DESC vbd{
+    .ByteWidth = sizeof(vertices),
+    .Usage = D3D11_USAGE_IMMUTABLE,
+    .BindFlags = D3D11_BIND_VERTEX_BUFFER,
+    .CPUAccessFlags = 0,
+    .MiscFlags = 0,
+    .StructureByteStride = 0
+  };
+
+  D3D11_SUBRESOURCE_DATA v_init_data{.pSysMem = vertices};
+  CHECK(SUCCEEDED(device_->CreateBuffer(&vbd, &v_init_data, &vertex_buffer_)))
+      << "Failed to create a vertex buffer";
+
+  D3D11_BUFFER_DESC cbd{.ByteWidth = sizeof(PerObject),
+                        .Usage = D3D11_USAGE_DYNAMIC,
+                        .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                        .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+                        .MiscFlags = 0,
+                        .StructureByteStride = 0};
+
+  CHECK(SUCCEEDED(device_->CreateBuffer(&cbd, nullptr, &per_object_cbuffer)))
+      << "Failed to create a per object constant buffer";
+
+
   LOG(INFO) << "Renderer has been created successfully";
 }
 
@@ -53,6 +101,34 @@ void zge::Renderer::DrawFrame() {
   immediate_context_->ClearRenderTargetView(render_target_view_.Get(), color);
   immediate_context_->ClearDepthStencilView(
       depth_stencil_view_.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+  immediate_context_->IASetInputLayout(input_layout_.Get());
+  immediate_context_->IASetPrimitiveTopology(
+      D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+  unsigned int stride = sizeof(Vertex);
+  unsigned int offset = 0;
+
+  immediate_context_->IASetVertexBuffers(0, 1, vertex_buffer_.GetAddressOf(),
+                                         &stride, &offset);
+
+  PerObject pb;
+  pb.model = glm::mat4(1);
+  pb.view = camera_.View();
+  pb.proj = camera_.Proj();
+
+  D3D11_MAPPED_SUBRESOURCE mapped_resource;
+  immediate_context_->Map(per_object_cbuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD,
+                          0, &mapped_resource);
+  memcpy(mapped_resource.pData, &pb, sizeof(pb));
+  immediate_context_->Unmap(per_object_cbuffer.Get(), 0);
+
+  immediate_context_->VSSetConstantBuffers(0, 1, per_object_cbuffer.GetAddressOf());
+
+  immediate_context_->VSSetShader(vertex_shader_.Get(), nullptr, 0);
+  immediate_context_->PSSetShader(pixel_shader_.Get(), nullptr, 0);
+
+  immediate_context_->Draw(3, 0);
 
   if (FAILED(swap_chain_->Present(0, 0))) {
     LOG(ERROR) << "Could not present a frame";

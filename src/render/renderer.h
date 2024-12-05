@@ -6,8 +6,16 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <render_mesh.h>
+#include <vector>
+#include <camera.h>
 
 namespace zge {
+
+struct PerObject {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
+};
 
 class Renderer {
  public:
@@ -25,11 +33,22 @@ class Renderer {
   Microsoft::WRL::ComPtr<ID3D11Texture2D> depth_stencil_buffer_;
   Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depth_stencil_view_;
   Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex_shader_;
-  Microsoft::WRL::ComPtr<ID3D11VertexShader> pixel_shader_;
+  Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shader_;
+  Microsoft::WRL::ComPtr<ID3D11InputLayout> input_layout_;
+  Microsoft::WRL::ComPtr<ID3D11Buffer> vertex_buffer_;
+  Microsoft::WRL::ComPtr<ID3D11Buffer> per_object_cbuffer;
 
   D3D11_VIEWPORT screen_viewport_;
 
   void OnResized(Extent2D new_extent);
+
+  Vertex vertices[3]{
+      {glm::vec3(-0.5f, -0.5f, 0.0f)},
+      {glm::vec3(0.0f, 0.5f, 0.0f)},
+      {glm::vec3(0.5f, -0.5f, 0.0f)}
+  };
+
+  Camera camera_;
 };
 
 
