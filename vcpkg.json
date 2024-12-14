@@ -5,6 +5,8 @@
     "glog",
     "directxtk",
     "glm",
-    "entt"
+    "entt",
+    "assimp",
+    "stb"
   ]
 }

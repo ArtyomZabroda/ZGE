@@ -4,7 +4,8 @@
 namespace zge {
 
 enum class Key {
-  kA, kB, kC, kD, kE, kF, kG, kH, kI, kJ, kL, kM, kN, kO, kP, kQ, kR, kS, kT, kU, kW, kX, kY, kZ
+  kA, kB, kC, kD, kE, kF, kG, kH, kI, kJ, kL, kM, kN, kO, kP, kQ, kR, kS, kT, kU, kW, kX, kY, kZ,
+  kMouse2
 };
 
 }

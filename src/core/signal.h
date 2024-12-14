@@ -11,6 +11,19 @@ class Signal;
 template <typename Signature>
 class Slot;
 
+
+class Connection {
+ public:
+  template <typename Signature>
+  friend class Signal;
+
+   void Disconnect() const { 
+     connection_.disconnect();
+   }
+ private:
+  boost::signals2::connection connection_;
+};
+
 template <typename F, typename... Args>
 class Slot<F(Args...)> {
  public:
@@ -28,8 +41,10 @@ class Signal<F(Args...)> {
  public:
   using Signature = F(Args...);
 
-  void Connect(Slot<Signature> slot) { 
-    signal_.connect(slot.slot_);
+  Connection Connect(Slot<Signature> slot) { 
+    Connection connection;
+    connection.connection_ = signal_.connect(slot.slot_);
+    return connection;
   }
   void Emit(Args&&... args) { 
     signal_(std::forward<Args>(args)...);

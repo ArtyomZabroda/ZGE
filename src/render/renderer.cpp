@@ -8,14 +8,20 @@
 #include <transform.h>
 #include <mesh_instance.h>
 #include <parent.h>
+#include <lights.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
-zge::Renderer::Renderer(Window* window, entt::registry* registry, entt::entity camera_entity)
+zge::Renderer::Renderer(Window* window,
+                        entt::registry* registry,
+                        entt::entity camera_entity,
+                        DebugLayer* debug_layer)
     : window_{window},
       registry_{registry},
       camera_{glm::vec3(0, 0, 0), glm::vec3(0, 0, 0)},
-      camera_entity_{camera_entity} {
+      camera_entity_{camera_entity},
+      debug_layer_{debug_layer} {
   LOG(INFO) << "Creating a renderer";
   DCHECK(window != nullptr);
 
@@ -71,25 +77,18 @@ zge::Renderer::Renderer(Window* window, entt::registry* registry, entt::entity c
                                              &pixel_shader_)))
       << "Failed to create a pixel shader";
 
-  D3D11_INPUT_ELEMENT_DESC vertex_desc[] = {{"POSITION", 0,
-                                             DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
-                                             D3D11_INPUT_PER_VERTEX_DATA, 0}};
-
-  device_->CreateInputLayout(vertex_desc, 1, vert_shader_bytes.data(),
-                             vert_shader_bytes.size(), &input_layout_);
-
-  D3D11_BUFFER_DESC vbd{
-    .ByteWidth = sizeof(vertices),
-    .Usage = D3D11_USAGE_IMMUTABLE,
-    .BindFlags = D3D11_BIND_VERTEX_BUFFER,
-    .CPUAccessFlags = 0,
-    .MiscFlags = 0,
-    .StructureByteStride = 0
+  D3D11_INPUT_ELEMENT_DESC vertex_desc[] = {
+    { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+    {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, normal),
+       D3D11_INPUT_PER_VERTEX_DATA, 0},
+    {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, tex_coord),
+       D3D11_INPUT_PER_VERTEX_DATA, 0},
   };
 
-  D3D11_SUBRESOURCE_DATA v_init_data{.pSysMem = vertices};
-  CHECK(SUCCEEDED(device_->CreateBuffer(&vbd, &v_init_data, &vertex_buffer_)))
-      << "Failed to create a vertex buffer";
+  device_->CreateInputLayout(
+      vertex_desc, sizeof(vertex_desc) / sizeof(D3D11_INPUT_ELEMENT_DESC),
+                             vert_shader_bytes.data(),
+                             vert_shader_bytes.size(), &input_layout_);
 
   D3D11_BUFFER_DESC cbd{.ByteWidth = sizeof(PerObject),
                         .Usage = D3D11_USAGE_DYNAMIC,
@@ -101,44 +100,22 @@ zge::Renderer::Renderer(Window* window, entt::registry* registry, entt::entity c
   CHECK(SUCCEEDED(device_->CreateBuffer(&cbd, nullptr, &per_object_cbuffer)))
       << "Failed to create a per object constant buffer";
 
-  
+  D3D11_BUFFER_DESC cpfbd{.ByteWidth = sizeof(PerFrame),
+                        .Usage = D3D11_USAGE_DYNAMIC,
+                        .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                        .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+                        .MiscFlags = 0,
+                        .StructureByteStride = 0};
 
-  zge::Parent* parent;
-  entt::entity proccessed_entity = camera_entity;
-  zge::Camera* camera = registry_->try_get<Camera>(camera_entity);
-  glm::mat4 model = glm::mat4(1);
-  model = glm::translate(model, camera->position);
-  model = glm::rotate(model, camera->rotation.y, glm::vec3(0, 1, 0));
-  model = glm::rotate(model, camera->rotation.x, glm::vec3(1, 0, 0));
-  model = glm::rotate(model, camera->rotation.z, glm::vec3(0, 0, 1));
-  while (parent = registry_->try_get<zge::Parent>(proccessed_entity)) {
-    if (Transform* t = registry_->try_get<zge::Transform>(parent->entity)) {
-      glm::mat4 parent_model;
-      parent_model = glm::mat4(1);
-      parent_model = glm::translate(parent_model, t->position);
-      parent_model =
-          glm::rotate(parent_model, glm::radians(t->rotation.y), glm::vec3(0, 1, 0));
-      parent_model =
-          glm::rotate(parent_model, glm::radians(t->rotation.x), glm::vec3(1, 0, 0));
-      parent_model =
-          glm::rotate(parent_model, glm::radians(t->rotation.z), glm::vec3(0, 0, 1));
+  CHECK(SUCCEEDED(device_->CreateBuffer(&cpfbd, nullptr, &per_frame_cbuffer_)))
+      << "Failed to create a per frame constant buffer";
 
-      model = parent_model * model;
-    }
-    proccessed_entity = parent->entity;
-  }
+  mesh = RenderMesh::Create(device_.Get(), "assets/meshes/backpack/backpack.obj").value();
 
-  glm::vec3 scale;
-  glm::quat rotation;
-  glm::vec3 translation;
-  glm::vec3 skew;
-  glm::vec4 perspective;
-  glm::decompose(model, scale, rotation, translation, skew,
-                 perspective);
+  debug_layer_->RenderInit(device_.Get(), immediate_context_.Get());
 
-  camera_.SetPosition(translation);
-  glm::vec3 rot_euler = glm::degrees(glm::eulerAngles(rotation));
-  camera_.SetRotation(rot_euler);
+  texture_manager_ = TextureManager(device_.Get());
+  texture_manager_->GetTexture("assets/meshes/backpack/diffuse.jpg");
 
   LOG(INFO) << "Renderer has been created successfully";
 }
@@ -152,12 +129,6 @@ void zge::Renderer::DrawFrame() {
   immediate_context_->IASetInputLayout(input_layout_.Get());
   immediate_context_->IASetPrimitiveTopology(
       D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-  unsigned int stride = sizeof(Vertex);
-  unsigned int offset = 0;
-
-  immediate_context_->IASetVertexBuffers(0, 1, vertex_buffer_.GetAddressOf(),
-                                         &stride, &offset);
 
   immediate_context_->VSSetShader(vertex_shader_.Get(), nullptr, 0);
   immediate_context_->PSSetShader(pixel_shader_.Get(), nullptr, 0);
@@ -173,10 +144,24 @@ void zge::Renderer::DrawFrame() {
     model = glm::rotate(model, transform.rotation.z, glm::vec3(0, 0, 1));
     model = glm::scale(model, transform.scale);
 
+    glm::mat4 camera_model =
+        CalculateGlobalModelTransform(*registry_, camera_entity_);
+
+    camera_.SetPosition(glm::vec3(camera_model[3]));
+    glm::vec3 rotation_r;
+    glm::extractEulerAngleYXZ(camera_model, rotation_r.y, rotation_r.x, rotation_r.z);
+    glm::vec3 rot_euler = glm::degrees(rotation_r);
+    camera_.SetRotation(rot_euler);
+
     PerObject pb;
     pb.model = model;
     pb.view = camera_.View();
     pb.proj = camera_.Proj();
+    pb.mat = Material{
+      .ambient = glm::vec4(0.48f, 0.77f, 0.46f, 1.0f),
+      .diffuse = glm::vec4(0.48f, 0.77f, 0.46f, 1.0f),
+      .specular = glm::vec4(0.2f, 0.2f, 0.2f, 16.0f)
+    };
 
     D3D11_MAPPED_SUBRESOURCE mapped_resource;
     immediate_context_->Map(per_object_cbuffer.Get(), 0,
@@ -185,8 +170,28 @@ void zge::Renderer::DrawFrame() {
     immediate_context_->Unmap(per_object_cbuffer.Get(), 0);
     immediate_context_->VSSetConstantBuffers(0, 1,
                                              per_object_cbuffer.GetAddressOf());
-    immediate_context_->Draw(3, 0);
+    immediate_context_->PSSetConstantBuffers(0, 1,
+                                             per_object_cbuffer.GetAddressOf());
+    DrawMesh(mesh, vertex_shader_.Get(), pixel_shader_.Get());
   }
+
+  PerFrame pf;
+  pf.eye_pos = camera_.Position();
+  for (auto&& [entity, dir_light1] :
+       registry_->view<zge::DirectionalLight>().each()) {
+
+    pf.dir_light = dir_light1;
+
+    D3D11_MAPPED_SUBRESOURCE mapped_resource;
+    immediate_context_->Map(per_frame_cbuffer_.Get(), 0,
+                            D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+    memcpy(mapped_resource.pData, &pf, sizeof(pf));
+    immediate_context_->Unmap(per_frame_cbuffer_.Get(), 0);
+    immediate_context_->PSSetConstantBuffers(1, 1,
+                                             per_frame_cbuffer_.GetAddressOf());
+  }
+
+  debug_layer_->Render();
 
   if (FAILED(swap_chain_->Present(0, 0))) {
     LOG(ERROR) << "Could not present a frame";
@@ -252,5 +257,8 @@ void zge::Renderer::OnResized(Extent2D new_extent) {
 void zge::Renderer::DrawMesh(const zge::RenderMesh& mesh,
                              ID3D11VertexShader* vs,
                              ID3D11PixelShader* ps) {
-  
+
+  for (unsigned int subset{}; subset < mesh.subsets_.size(); ++subset) {
+    mesh.geometry->Draw(immediate_context_.Get(), subset);
+  }
 }

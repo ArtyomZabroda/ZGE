@@ -13,13 +13,15 @@ class RenderCamera {
   glm::mat4 View();
   glm::mat4 Proj();
 
+  glm::vec3 Position() const { return position_; }
+  glm::vec3 Rotation() const { return rotation_; }
+  glm::vec3 Front() const { return front_; }
+
   void SetPosition(glm::vec3 position);
   void SetRotation(glm::vec3 rotation);
  private:
   glm::vec3 position_;
   glm::vec3 rotation_;
-
-
 
   glm::vec3 front_{0, 0, -1};
   glm::vec3 up_{0, 1, 0};
