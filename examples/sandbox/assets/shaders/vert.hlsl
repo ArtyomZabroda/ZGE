@@ -23,11 +23,13 @@ struct VertexIn {
 struct VertexOut {
     float4 position : SV_POSITION;
     float4 normal : NORMAL;
+    float2 tex_coord : TEXCOORD;
 };
 
 VertexOut main(VertexIn vin) {
     VertexOut vout;
     vout.position = mul(proj, mul(view, mul(model, float4(vin.position, 1.0))));
     vout.normal = float4(vin.normal, 0.0f);
+    vout.tex_coord = vin.tex_coord;
     return vout;
 };

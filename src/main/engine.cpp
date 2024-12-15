@@ -102,7 +102,10 @@ zge::Engine::Engine(int argc, char** argv)
 
     for (auto&& [entity, dir_light] :
          registry_.view<DirectionalLight>().each()) {
-      ImGui::SliderFloat3("Light", &dir_light.direction[0], -1, 1);
+      ImGui::SliderFloat3("Light direction", &dir_light.direction[0], -1, 1);
+      ImGui::SliderFloat3("Light ambient", &dir_light.ambient[0], 0, 1);
+      ImGui::SliderFloat3("Light diffuse", &dir_light.diffuse[0], 0, 1);
+      ImGui::SliderFloat3("Light specular", &dir_light.specular[0], 0, 1);
     }
 
 

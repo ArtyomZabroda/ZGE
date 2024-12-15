@@ -1,7 +1,11 @@
 #include <render_mesh.h>
 #include <log.h>
+#include <filesystem>
 
-std::optional<zge::RenderMesh> zge::RenderMesh::Create(ID3D11Device* device, const char* path) {
+std::optional<zge::RenderMesh> zge::RenderMesh::Create(
+    ID3D11Device* device,
+    const char* path,
+    TextureManager& texture_mgr) {
   RenderMesh mesh;
   Assimp::Importer importer;
   const aiScene* scene =
@@ -11,22 +15,29 @@ std::optional<zge::RenderMesh> zge::RenderMesh::Create(ID3D11Device* device, con
     LOG(ERROR) << importer.GetErrorString();
     return std::nullopt;
   }
-  mesh.ProcessNode(scene->mRootNode, scene);
+  mesh.ProcessNode(scene->mRootNode, scene,
+                   std::filesystem::path(path).parent_path().string().c_str(), texture_mgr);
   mesh.geometry = MeshGeometry(device, mesh.vertices_, mesh.indices_, mesh.subsets_);
   return mesh;
 }
 
-void zge::RenderMesh::ProcessNode(aiNode* node, const aiScene* scene) {
+void zge::RenderMesh::ProcessNode(aiNode* node,
+                                  const aiScene* scene,
+                                  const char* directory,
+                                  TextureManager& texture_mgr) {
   for (unsigned int i{}; i < node->mNumMeshes; ++i) {
     aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-    ProcessMesh(mesh, scene);
+    ProcessMesh(mesh, scene, directory, texture_mgr);
   }
   for (unsigned int i{}; i < node->mNumChildren; ++i) {
-    ProcessNode(node->mChildren[i], scene);
+    ProcessNode(node->mChildren[i], scene, directory, texture_mgr);
   }
 }
 
-void zge::RenderMesh::ProcessMesh(aiMesh* mesh, const aiScene* scene) {
+void zge::RenderMesh::ProcessMesh(aiMesh* mesh,
+                                  const aiScene* scene,
+                                  const char* directory,
+                                  TextureManager& texture_mgr) {
   Subset subset{.vertex_start = (unsigned int)vertices_.size(),
                 .vertex_count = mesh->mNumVertices,
                 .face_start = (unsigned int)indices_.size() / 3,
@@ -56,4 +67,41 @@ void zge::RenderMesh::ProcessMesh(aiMesh* mesh, const aiScene* scene) {
       indices_.push_back(face.mIndices[j]);
     }
   }
+  if (mesh->mMaterialIndex >= 0) {
+    aiMaterial* mat = scene->mMaterials[mesh->mMaterialIndex];
+    std::vector<Texture> diffuse_maps =
+        LoadMaterialTextures(mat, aiTextureType_DIFFUSE, directory, texture_mgr);
+    std::vector<Texture> specular_maps =
+        LoadMaterialTextures(mat, aiTextureType_SPECULAR, directory, texture_mgr);
+    textures_.insert(textures_.end(), diffuse_maps.begin(), diffuse_maps.end());
+    textures_.insert(textures_.end(), specular_maps.begin(), specular_maps.end());
+  }
+}
+
+std::vector<zge::Texture> zge::RenderMesh::LoadMaterialTextures(aiMaterial* mat,
+    aiTextureType type,
+    const char* directory,
+    TextureManager& texture_mgr) {
+  std::vector<zge::Texture> textures;
+  zge::Texture::TextureType zge_texture_type;
+  switch (type) { 
+   case aiTextureType_DIFFUSE:
+    zge_texture_type = zge::Texture::TextureType::kDiffuse;
+    break;
+   case aiTextureType_SPECULAR:
+    zge_texture_type = zge::Texture::TextureType::kSpecular;
+    break;
+   default:
+     LOG(ERROR) << "Could not load material";
+     return textures;
+  }
+
+  for (unsigned int i{}; i < mat->GetTextureCount(type); ++i) {
+    aiString str;
+    mat->GetTexture(type, i, &str);
+    textures.push_back(texture_mgr.GetTexture(
+        (std::filesystem::path(directory) / str.C_Str()).string().c_str(),
+        zge_texture_type));
+  }
+  return textures;
 }

@@ -2,6 +2,7 @@ struct VertexOut
 {
     float4 position : SV_POSITION;
     float4 normal : NORMAL;
+    float2 tex_coord : TEXCOORD;
 };
 
 struct Material
@@ -65,7 +66,15 @@ cbuffer per_frame : register(b1)
     float pad;
 };
 
-void ComputeDirectionalLight(Material mat, DirectionalLight l, float3 normal, float3 to_eye, out float4 ambient, out float4 diffuse, out float4 specular)
+Texture2D diffuse_map;
+Texture2D specular_map;
+
+SamplerState sam1
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+};
+
+void ComputeDirectionalLight(Material mat, DirectionalLight l, float3 normal, float3 to_eye, float2 tex_coords, out float4 ambient, out float4 diffuse, out float4 specular)
 {
     // Initialize outputs
     ambient = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -74,7 +83,7 @@ void ComputeDirectionalLight(Material mat, DirectionalLight l, float3 normal, fl
 
     float3 light_vec = -l.direction;
     
-    ambient = mat.ambient * l.ambient;
+    ambient = diffuse_map.Sample(sam1, tex_coords) * l.ambient;
     
     float diffuse_factor = dot(light_vec, normal);
     
@@ -84,8 +93,9 @@ void ComputeDirectionalLight(Material mat, DirectionalLight l, float3 normal, fl
         float3 v = reflect(-light_vec, normal);
         float spec_factor = pow(max(dot(v, to_eye), 0.0f), mat.specular.w);
 
-        diffuse = diffuse_factor * mat.diffuse * l.diffuse;
-        specular = spec_factor * mat.specular * l.specular;
+        
+        diffuse = diffuse_factor * l.diffuse * diffuse_map.Sample(sam1, tex_coords);
+        specular = spec_factor * l.specular * specular_map.Sample(sam1, tex_coords);
     }
     
 }
@@ -102,7 +112,7 @@ float4 main(VertexOut pin) : SV_Target {
     
     float4 A, D, S;
     
-    ComputeDirectionalLight(mat, dir_light, pin.normal.xyz, to_eye, A, D, S);
+    ComputeDirectionalLight(mat, dir_light, pin.normal.xyz, to_eye, pin.tex_coord, A, D, S);
     
     ambient += A;
     diffuse += D;

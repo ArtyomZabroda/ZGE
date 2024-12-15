@@ -81,7 +81,7 @@ zge::Renderer::Renderer(Window* window,
     { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
     {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, normal),
        D3D11_INPUT_PER_VERTEX_DATA, 0},
-    {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, tex_coord),
+    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(Vertex, tex_coord),
        D3D11_INPUT_PER_VERTEX_DATA, 0},
   };
 
@@ -110,12 +110,18 @@ zge::Renderer::Renderer(Window* window,
   CHECK(SUCCEEDED(device_->CreateBuffer(&cpfbd, nullptr, &per_frame_cbuffer_)))
       << "Failed to create a per frame constant buffer";
 
-  mesh = RenderMesh::Create(device_.Get(), "assets/meshes/backpack/backpack.obj").value();
+  
 
   debug_layer_->RenderInit(device_.Get(), immediate_context_.Get());
 
   texture_manager_ = TextureManager(device_.Get());
-  texture_manager_->GetTexture("assets/meshes/backpack/diffuse.jpg");
+  texture_manager_->GetTexture("assets/meshes/backpack/diffuse.jpg",
+                               Texture::TextureType::kDiffuse);
+  mesh =
+      RenderMesh::Create(device_.Get(), "assets/meshes/backpack/backpack.obj",
+                         texture_manager_.value())
+          .value();
+
 
   LOG(INFO) << "Renderer has been created successfully";
 }
@@ -153,6 +159,21 @@ void zge::Renderer::DrawFrame() {
     glm::vec3 rot_euler = glm::degrees(rotation_r);
     camera_.SetRotation(rot_euler);
 
+    PerFrame pf;
+    pf.eye_pos = camera_.Position();
+    for (auto&& [entity, dir_light1] :
+         registry_->view<zge::DirectionalLight>().each()) {
+      pf.dir_light = dir_light1;
+
+      D3D11_MAPPED_SUBRESOURCE mapped_resource;
+      immediate_context_->Map(per_frame_cbuffer_.Get(), 0,
+                              D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+      memcpy(mapped_resource.pData, &pf, sizeof(pf));
+      immediate_context_->Unmap(per_frame_cbuffer_.Get(), 0);
+      immediate_context_->PSSetConstantBuffers(
+          1, 1, per_frame_cbuffer_.GetAddressOf());
+    }
+
     PerObject pb;
     pb.model = model;
     pb.view = camera_.View();
@@ -172,23 +193,8 @@ void zge::Renderer::DrawFrame() {
                                              per_object_cbuffer.GetAddressOf());
     immediate_context_->PSSetConstantBuffers(0, 1,
                                              per_object_cbuffer.GetAddressOf());
+    mesh.textures_[0].SetSampler(0, immediate_context_.Get());
     DrawMesh(mesh, vertex_shader_.Get(), pixel_shader_.Get());
-  }
-
-  PerFrame pf;
-  pf.eye_pos = camera_.Position();
-  for (auto&& [entity, dir_light1] :
-       registry_->view<zge::DirectionalLight>().each()) {
-
-    pf.dir_light = dir_light1;
-
-    D3D11_MAPPED_SUBRESOURCE mapped_resource;
-    immediate_context_->Map(per_frame_cbuffer_.Get(), 0,
-                            D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
-    memcpy(mapped_resource.pData, &pf, sizeof(pf));
-    immediate_context_->Unmap(per_frame_cbuffer_.Get(), 0);
-    immediate_context_->PSSetConstantBuffers(1, 1,
-                                             per_frame_cbuffer_.GetAddressOf());
   }
 
   debug_layer_->Render();
