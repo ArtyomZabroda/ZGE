@@ -35,4 +35,4 @@ jobs:
 
     - name: Build
       working-directory: ${{ github.workspace }}
-      run: cmake --build ${{ out/build/${{ matrix.os.preset }} }}
+      run: cmake --build ${{ out/build/${{ matrix.os.preset }}
