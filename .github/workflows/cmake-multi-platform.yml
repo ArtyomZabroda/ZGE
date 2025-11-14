@@ -31,7 +31,7 @@ jobs:
     - uses: awalsh128/cache-apt-pkgs-action@latest
       if: matrix.os == 'ubuntu-latest'
       with:
-        packages: autoconf autoconf-archive automake libtool
+        packages: autoconf autoconf-archive automake libtool libltdl-dev
         version: 1.0
 
     - uses: lukka/get-cmake@latest
