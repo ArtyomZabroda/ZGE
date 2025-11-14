@@ -9,7 +9,9 @@
       "installDir": "${sourceDir}/out/install/${presetName}",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "environment": {
-        "VCPKG_FEATURE_FLAGS": "manifests,versions,binarycaching,registries"
+        "VCPKG_FEATURE_FLAGS": "manifests,versions,binarycaching,registries",
+        "CFLAGS": "-fsanitize=address",
+        "CXXFLAGS": "-fsanitize=address"
       },
       "condition": {
         "type": "equals",
@@ -27,7 +29,7 @@
         "strategy": "external"
       },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
       }
     },
     {
