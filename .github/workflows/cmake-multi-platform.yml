@@ -44,4 +44,4 @@ jobs:
       uses: lukka/run-cmake@v10
       with:
         configurePreset: ${{ matrix.preset }}
-        buildPreset: ${{ matrix.['build-preset'] }}
+        buildPreset: ${{ matrix.build-preset }}
