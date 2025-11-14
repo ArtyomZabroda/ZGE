@@ -31,8 +31,8 @@ jobs:
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       working-directory: ${{ github.workspace }}
       run: >
-        cmake --preset ${{ matrix.os.preset }}
+        cmake --preset ${{ matrix.preset }}
 
     - name: Build
       working-directory: ${{ github.workspace }}
-      run: cmake --build out/build/${{ matrix.os.preset }}
+      run: cmake --build out/build/${{ matrix.preset }}
