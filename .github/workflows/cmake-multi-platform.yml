@@ -20,8 +20,10 @@ jobs:
         include:
           - os: windows-latest
             preset: "x64-debug"
+            build-preset: "default-build-windows"
           - os: ubuntu-latest
             preset: "linux-debug"
+            build-preset: "default-build-linux"
 
     steps:
     - uses: actions/checkout@v4
@@ -32,14 +34,9 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgJsonGlob: 'vcpkg.json'
-    
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      working-directory: ${{ github.workspace }}
-      run: >
-        cmake --preset ${{ matrix.preset }}
-
-    - name: Build
-      working-directory: ${{ github.workspace }}
-      run: cmake --build out/build/${{ matrix.preset }}
+        
+    - name: Run CMake+vcpkg+Ninja+CTest to build packages and generate/build/test the code.
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: ${{ matrix.preset }}
+        buildPreset: ${{ matrix.build-preset }}
