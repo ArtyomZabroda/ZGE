@@ -1,12 +1,15 @@
-#include <iostream>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL.h>
+#include <log.h>
 
 int main(int argc, char* argv[]) {
+  core::SingleThreadedLogger st_logger;
   if (SDL_Init(SDL_INIT_VIDEO)) {
-		std::cout << "SDL initialized successfully." << std::endl;
+    st_logger.LogTrace("SDL initialized successfully.");
   } else {
-    std::cout << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
+    st_logger.LogFatal(
+        std::format("Failed to initialize SDL: {}", SDL_GetError()));
+    
   }
 	return 0;
 }
