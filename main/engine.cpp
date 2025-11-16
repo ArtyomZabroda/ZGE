@@ -15,9 +15,9 @@ boost::leaf::result<Engine> Engine::Create(int argc, char* argv[]) {
   }
 
   boost::leaf::result<std::unique_ptr<core::Window>> window = boost::leaf::try_handle_some(
-      []() -> boost::leaf::result<std::unique_ptr<core::Window>> {
+      [&engine]() -> boost::leaf::result<std::unique_ptr<core::Window>> {
             BOOST_LEAF_AUTO(window,
-                            core::Window::Create(core::Extent2D(1280, 720),
+                            core::Window::Create(engine.logger_.get(), core::Extent2D(1280, 720),
                                                  "Hello, world!"));
             return std::make_unique<core::Window>(std::move(window));
       },
