@@ -1,15 +1,17 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL.h>
-#include <log.h>
+#include "engine.h"
 
 int main(int argc, char* argv[]) {
-  core::SingleThreadedLogger st_logger;
-  if (SDL_Init(SDL_INIT_VIDEO)) {
-    st_logger.LogTrace("SDL initialized successfully.");
-  } else {
-    st_logger.LogFatal(
-        std::format("Failed to initialize SDL: {}", SDL_GetError()));
-    
-  }
-	return 0;
+  int exit_code = boost::leaf::try_handle_all(
+                 [&argc, &argv]() -> boost::leaf::result<int> {
+                   BOOST_LEAF_AUTO(
+                       engine, Engine::Create(argc, argv));
+                   BOOST_LEAF_CHECK(engine.Run());
+                   return EXIT_SUCCESS;
+                 },
+                 []() -> int {
+                   return EXIT_FAILURE;
+                 });
+  return exit_code;
 }

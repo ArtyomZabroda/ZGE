@@ -4,7 +4,6 @@
 
 boost::leaf::result<Engine> Engine::Create(int argc, char* argv[]) {
   Engine engine;
-  core::SingleThreadedLogger::Init();
   engine.logger_ = std::make_unique<core::SingleThreadedLogger>();
 
   if (SDL_Init(SDL_INIT_VIDEO)) {

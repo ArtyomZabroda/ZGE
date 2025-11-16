@@ -6,6 +6,7 @@
         "vulkan"
       ]
     },
-    "boost-log"
+    "boost-log",
+    "boost-leaf"
   ]
 }
