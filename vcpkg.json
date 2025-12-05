@@ -7,6 +7,10 @@
       ]
     },
     "boost-log",
-    "boost-leaf"
+    "boost-leaf",
+    "boost-url",
+    "directxmath",
+    "gtest",
+    "shader-slang"
   ]
 }

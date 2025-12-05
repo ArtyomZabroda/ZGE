@@ -1,5 +1,6 @@
 #include <window.h>
 #include <limits>
+#include <SDL3/SDL_vulkan.h>
 
 namespace core {
 
@@ -21,6 +22,23 @@ boost::leaf::result<Window> Window::Create(core::ILogger* logger,
 
   logger->LogDebug("Window::Create end");
   return window;
+}
+
+std::tuple<const char* const*, std::size_t>
+Window::GetVulkanInstanceExtensions() {
+  uint32_t count;
+  const char* const* extensions_ptr = SDL_Vulkan_GetInstanceExtensions(&count);
+  return std::tuple<const char* const*, std::size_t>(extensions_ptr,
+                                                          static_cast<size_t>(count));
+}
+
+boost::leaf::result<VkSurfaceKHR> Window::CreateSurface(VkInstance instance) {
+  VkSurfaceKHR surface;
+  bool is_successful = SDL_Vulkan_CreateSurface(sdl_wnd_.get(), instance,
+                           nullptr,
+                           &surface);
+  if (!is_successful) return boost::leaf::new_error(std::string(SDL_GetError()));
+  return surface;
 }
 
 }

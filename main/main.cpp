@@ -5,8 +5,7 @@
 int main(int argc, char* argv[]) {
   int exit_code = boost::leaf::try_handle_all(
                  [&argc, &argv]() -> boost::leaf::result<int> {
-                   BOOST_LEAF_AUTO(
-                       engine, Engine::Create(argc, argv));
+                   BOOST_LEAF_AUTO(engine, Engine::Create(argc, argv));
                    BOOST_LEAF_CHECK(engine.Run());
                    return EXIT_SUCCESS;
                  },
